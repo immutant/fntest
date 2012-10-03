@@ -20,14 +20,17 @@
 
 (defn with-jboss
   "A test fixture for starting/stopping JBoss"
-  [f]
-  (try
-    (println "Starting JBoss")
-    (jboss/start)
-    (f)
-    (finally
-     (println "Stopping JBoss")
-     (jboss/stop))))
+  [f & [lazy]]
+  (let [already-running (and lazy (jboss/wait-for-ready? 0))]
+    (try
+      (when-not already-running
+        (println "Starting JBoss")
+        (jboss/start))
+      (f)
+      (finally
+       (when-not already-running
+         (println "Stopping JBoss")
+         (jboss/stop))))))
 
 (defn with-deployments
   "Returns a test fixture for deploying/undeploying multiple apss to a running JBoss"
