@@ -46,6 +46,7 @@
 (defn start
   "Start up a JBoss or toss exception if one is already running"
   []
+  (println "Starting JBoss")
   (if (api/ready?)
     (throw (Exception. "JBoss is already running!"))
     (let [cmd (start-command)]
@@ -55,6 +56,7 @@
 (defn stop
   "Shut down whatever JBoss instance is responding to api-url"
   []
+  (println "Stopping JBoss")
   (api/shutdown))
 
 (defn descriptor
@@ -84,6 +86,7 @@
            fname (.getName file)
            url (.toURL file)
            add (api/add fname url)]
+       (println "Deploying" (.getCanonicalPath file))
        (when-not (= "success" (add :outcome))
          (api/remove fname)
          (api/add fname url))
@@ -93,4 +96,5 @@
   "Undeploy the apps deployed under the given names"
   [& names]
   (doseq [name names]
+    (println "Undeploying" name)
     (api/remove (deployment-name name))))

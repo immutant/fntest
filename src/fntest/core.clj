@@ -24,12 +24,10 @@
   (let [already-running (and lazy (jboss/wait-for-ready? 0))]
     (try
       (when-not already-running
-        (println "Starting JBoss")
         (jboss/start))
       (f)
       (finally
        (when-not already-running
-         (println "Stopping JBoss")
          (jboss/stop))))))
 
 (defn with-deployments
