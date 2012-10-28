@@ -34,12 +34,13 @@
   "Returns a test fixture for deploying/undeploying multiple apss to a running JBoss"
   [descriptor-map]
   (fn [f]
-    (try
-      (when (jboss/wait-for-ready? 20)
-        (jboss/deploy descriptor-map))
-      (f)
-      (finally
-       (apply jboss/undeploy (keys descriptor-map))))))
+    (if (jboss/wait-for-ready? (Integer. (or (System/getenv "WAIT_FOR_JBOSS") 60)))
+      (try
+        (jboss/deploy descriptor-map)
+        (f)
+        (finally
+         (apply jboss/undeploy (keys descriptor-map))))
+      (println "Timed out waiting for JBoss (try setting WAIT_FOR_JBOSS=120)"))))
 
 (defn with-deployment
   "Returns a test fixture for deploying/undeploying an app to a running JBoss"

@@ -87,7 +87,7 @@
            url (.toURL file)
            add (api/add fname url)]
        (println "Deploying" (.getCanonicalPath file))
-       (when-not (= "success" (add :outcome))
+       (when-not (= "success" (:outcome add))
          (api/remove fname)
          (api/add fname url))
        (api/deploy fname))))
