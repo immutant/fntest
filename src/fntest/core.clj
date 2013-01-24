@@ -1,4 +1,4 @@
-;; Copyright 2008-2012 Red Hat, Inc, and individual contributors.
+;; Copyright 2008-2013 Red Hat, Inc, and individual contributors.
 ;;
 ;; This is free software; you can redistribute it and/or modify it
 ;; under the terms of the GNU Lesser General Public License as
@@ -31,7 +31,7 @@
          (jboss/stop))))))
 
 (defn with-deployments
-  "Returns a test fixture for deploying/undeploying multiple apss to a running JBoss"
+  "Returns a test fixture for deploying/undeploying multiple apps to a running JBoss"
   [descriptor-map]
   (fn [f]
     (if (jboss/wait-for-ready? (Integer. (or (System/getenv "WAIT_FOR_JBOSS") 60)))
