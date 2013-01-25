@@ -18,7 +18,6 @@
 (ns fntest.nrepl
   (:require [clojure.tools.nrepl :as repl]
             [clojure.string :as str]
-            [fntest.core :as core]
             [fntest.jboss :as jboss]))
 
 (def ^:dynamic *nrepl-conn*)
@@ -93,17 +92,3 @@
       (execute load-command)
       (execute (run-command dir)))))
 
-(defn run-in-container
-  "Starts up an Immutant, if necessary, deploys an application named
-   by name and located at root, and invokes f, after which the app is
-   undeployed, and the Immutant, if started, is shut down"
-  [name root opts]
-  (binding [jboss/*home* (:jboss-home opts jboss/*home*)]
-    (let [deployer (core/with-deployment name
-                     {:root root
-                      :context-path (str name "-" (java.util.UUID/randomUUID))
-                      :lein-profiles [:default :test]
-                      :swank-port nil
-                      :nrepl-port (get-port opts)})
-          f #(run-tests opts)]
-      (core/with-jboss #(deployer f) :lazy))))
