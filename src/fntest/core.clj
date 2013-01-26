@@ -52,13 +52,15 @@
   "Starts up an Immutant, if necessary, deploys an application named
    by name and located at root, and invokes f, after which the app is
    undeployed, and the Immutant, if started, is shut down"
-  [name root & {:keys [jboss-home] :or {jboss-home jboss/*home*} :as opts}]
+  [name root & {:keys [jboss-home config] :or {jboss-home jboss/*home*} :as opts}]
   (binding [jboss/*home* jboss-home]
     (let [deployer (with-deployment name
-                     {:root root
-                      :context-path (str name "-" (java.util.UUID/randomUUID))
-                      :lein-profiles [:default :test]
-                      :swank-port nil
-                      :nrepl-port (nrepl/get-port opts)})
+                     (merge
+                      {:root root
+                       :context-path (str name "-" (java.util.UUID/randomUUID))
+                       :lein-profiles [:default :test]
+                       :swank-port nil
+                       :nrepl-port (nrepl/get-port opts)}
+                      config))
           f #(nrepl/run-tests opts)]
       (with-jboss #(deployer f) 30))))
