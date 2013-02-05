@@ -23,27 +23,15 @@
 (def ^:dynamic *nrepl-conn*)
 
 (def load-command (repl/code
-                   (require '[clojure.test :as t]
-                            '[bultitude.core :as b]
-                            '[immutant.util :as u])))
+                   (require 'clojure.test)))
 
-(defn deps-command [test-dir]
+(defn run-command [nses]
   (str/replace
    (repl/code
-    (require 'immutant.dev)
-    (-> (immutant.dev/add-dependencies! "REPLACE" '[bultitude "0.2.0"])
-        (select-keys [:dependencies :source-paths])))
+    (apply require 'REPLACE)
+    (clojure.test/successful? (apply clojure.test/run-tests 'REPLACE)))
    "REPLACE"
-   test-dir))
-
-(defn run-command [test-dir]
-  (str/replace
-   (repl/code
-    (let [nses (b/namespaces-in-dir (u/app-relative "REPLACE"))]
-      (apply require nses)
-      (t/successful? (apply t/run-tests nses))))
-   "REPLACE"
-   test-dir))
+   (pr-str nses)))
 
 (defn get-host [& [opts]]
   (or (:host opts) "localhost"))
@@ -85,10 +73,8 @@
 
 (defn run-tests
   "Load test namespaces beneath dir and run them"
-  [opts]
-  (let [dir (or (:dir opts) "test")]
-    (with-connection opts
-      (execute (deps-command dir))
-      (execute load-command)
-      (execute (run-command dir)))))
+  [{:keys [nses] :as opts}]
+  (with-connection opts
+    (execute load-command)
+    (execute (run-command nses))))
 

@@ -16,8 +16,10 @@
 ;; 02110-1301 USA, or see the FSF site: http://www.fsf.org.
 
 (ns fntest.core
-  (:require [fntest.jboss :as jboss]
-            [fntest.nrepl :as nrepl]))
+  (:require [fntest.jboss    :as jboss]
+            [fntest.nrepl    :as nrepl]
+            [bultitude.core  :as bc]
+            [clojure.java.io :as io]))
 
 (defn with-jboss
   "A test fixture for starting/stopping JBoss"
@@ -48,11 +50,16 @@
   [name descriptor-or-file]
   (with-deployments {name descriptor-or-file}))
 
+(defn locate-tests
+  "Locates the namespaces to be tested."
+  [root dirs]
+  (mapcat #(bc/namespaces-in-dir %) (or dirs [(io/file root "test")])))
+
 (defn test-in-container
   "Starts up an Immutant, if necessary, deploys an application named
    by name and located at root, and invokes f, after which the app is
    undeployed, and the Immutant, if started, is shut down"
-  [name root & {:keys [jboss-home config] :or {jboss-home jboss/*home*} :as opts}]
+  [name root & {:keys [jboss-home config dirs] :or {jboss-home jboss/*home*} :as opts}]
   (binding [jboss/*home* jboss-home]
     (let [deployer (with-deployment name
                      (merge
@@ -62,5 +69,6 @@
                        :swank-port nil
                        :nrepl-port (nrepl/get-port opts)}
                       config))
-          f #(nrepl/run-tests opts)]
+          f #(nrepl/run-tests (assoc opts
+                                :nses (locate-tests root dirs)))]
       (with-jboss #(deployer f) 30))))
