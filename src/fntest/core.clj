@@ -65,7 +65,7 @@
                      (merge
                       {:root root
                        :context-path (str name "-" (java.util.UUID/randomUUID))
-                       :lein-profiles [:default :test]
+                       :lein-profiles [:dev :test]
                        :swank-port nil
                        :nrepl-port (nrepl/get-port opts)}
                       config))
