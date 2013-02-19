@@ -22,14 +22,17 @@
 
 (def ^:dynamic *nrepl-conn*)
 
-(def load-command (repl/code
-                   (require 'clojure.test)))
-
 (defn run-command [nses]
   (str/replace
    (repl/code
-    (apply require 'REPLACE)
-    (clojure.test/successful? (apply clojure.test/run-tests 'REPLACE)))
+    (try
+      (require 'clojure.test)
+      (apply require 'REPLACE)
+      (clojure.test/successful? (apply clojure.test/run-tests 'REPLACE))
+      (catch Exception e
+        (.printStackTrace e)
+        (.printStackTrace e *out*)
+        nil)))
    "REPLACE"
    (pr-str nses)))
 
@@ -65,16 +68,16 @@
    {} (apply concat results)))
 
 (defn execute [command]
-  (println "nrepl>" command)
   (let [result (parse (remote command))]
-    (if (:out result) (println (:out result)))
-    (println (:value result))
-    (read-string (:value result))))
+    (if (:out result)
+      (println (:out result)))
+    (if (:value result)
+      (read-string (:value result)))))
 
 (defn run-tests
   "Load test namespaces beneath dir and run them"
   [{:keys [nses] :as opts}]
+  (println "Testing namespaces in container:" nses)
   (with-connection opts
-    (execute load-command)
     (execute (run-command nses))))
 
