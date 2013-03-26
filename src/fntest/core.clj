@@ -71,4 +71,4 @@
                       config))
           f #(nrepl/run-tests (assoc opts
                                 :nses (locate-tests root dirs)))]
-      (with-jboss #(deployer f) 30))))
+      (with-jboss #(deployer f)))))
