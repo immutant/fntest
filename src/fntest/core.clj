@@ -24,7 +24,9 @@
 (defn with-jboss
   "A test fixture for starting/stopping JBoss"
   [f & [lazy]]
-  (let [already-running (and lazy (jboss/wait-for-ready? (if (number? lazy) lazy 0)))]
+  (let [already-running (and lazy
+                             (jboss/wait-for-ready?
+                              (if (number? lazy) lazy 0)))]
     (try
       (when-not already-running
         (jboss/start))
@@ -71,4 +73,4 @@
                       config))
           f #(nrepl/run-tests (assoc opts
                                 :nses (locate-tests root dirs)))]
-      (with-jboss #(deployer f)))))
+      (with-jboss #(deployer f) :lazy))))
