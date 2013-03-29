@@ -21,6 +21,8 @@
             [bultitude.core  :as bc]
             [clojure.java.io :as io]))
 
+(def port-file "target/test-repl-port")
+
 (defn with-jboss
   "A test fixture for starting/stopping JBoss"
   [f & [lazy]]
@@ -69,8 +71,10 @@
                        :context-path (str name "-" (java.util.UUID/randomUUID))
                        :lein-profiles [:dev :test]
                        :swank-port nil
-                       :nrepl-port (nrepl/get-port opts)}
+                       :nrepl-port 0
+                       :nrepl-port-file port-file}
                       config))
           f #(nrepl/run-tests (assoc opts
-                                :nses (locate-tests root dirs)))]
+                                :nses (locate-tests root dirs)
+                                :port-file (io/file root port-file)))]
       (with-jboss #(deployer f) :lazy))))

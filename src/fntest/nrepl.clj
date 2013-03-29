@@ -40,7 +40,10 @@
   (or (:host opts) "localhost"))
 
 (defn get-port [& [opts]]
-  (read-string (or (:port opts) "7888")))
+  (cond
+   (:port opts) (read-string (:port opts))
+   (:port-file opts) (read-string (slurp (:port-file opts)))
+   :default 7888))
 
 (defmacro with-connection
   "Takes :host and :port options"
