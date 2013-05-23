@@ -7,5 +7,5 @@
   :dependencies [[jboss-as-management "0.2.1"]
                  [org.clojure/tools.nrepl "0.2.1"]
                  [bultitude "0.2.0"]]
-  {:signing {:gpg-key "BFC757F9"}}
+  :signing {:gpg-key "BFC757F9"}
   :lein-release {:deploy-via :clojars})
