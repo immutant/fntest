@@ -16,25 +16,19 @@
 ;; 02110-1301 USA, or see the FSF site: http://www.fsf.org.
 
 (ns fntest.nrepl
-  (:require [clojure.tools.nrepl :as repl]
-            [clojure.string :as str]
-            [fntest.jboss :as jboss]))
+  (:require [clojure.tools.nrepl :as repl]))
 
 (def ^:dynamic *nrepl-conn*)
 
 (defn run-command [nses]
-  (str/replace
-   (repl/code
-    (try
-      (require 'clojure.test)
-      (apply require 'REPLACE)
-      (clojure.test/successful? (apply clojure.test/run-tests 'REPLACE))
-      (catch Exception e
-        (.printStackTrace e)
-        (.printStackTrace e *out*)
-        nil)))
-   "REPLACE"
-   (pr-str nses)))
+  (pr-str `(try
+             (require 'clojure.test)
+             (apply require '~nses)
+             (clojure.test/successful? (apply clojure.test/run-tests '~nses))
+             (catch Exception e#
+               (.printStackTrace e#)
+               (.printStackTrace e# *out*)
+               nil))))
 
 (defn get-host [& [opts]]
   (or (:host opts) "localhost"))
