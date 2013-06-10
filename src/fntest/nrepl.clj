@@ -22,19 +22,26 @@
 
 (def ^:dynamic *nrepl-conn*)
 
-(defn run-command [nses]
-  (str/replace
-   (repl/code
-    (try
-      (require 'clojure.test)
-      (apply require 'REPLACE)
-      (clojure.test/successful? (apply clojure.test/run-tests 'REPLACE))
-      (catch Exception e
-        (.printStackTrace e)
-        (.printStackTrace e *out*)
-        nil)))
-   "REPLACE"
-   (pr-str nses)))
+(defmacro test-running-code
+  "Produces forms to be sent to the remote Immutant app that run tests
+  on the given namespaces." 
+  [nses]
+  (repl/code
+   `(try
+     (letfn (midje-available? []
+              (try (require 'midje.repl)
+                   (catch FileNotFoundException e
+                     false)))
+       (if (midje-available?)
+         (apply midje.repl/load-facts ~nses)
+         (do
+           (require 'clojure.test)
+           (apply require ~nses)
+           (clojure.test/successful? (apply clojure.test/run-tests ~nses)))))
+     (catch Exception e
+       (.printStackTrace e)
+       (.printStackTrace e *out*)
+       nil))))
 
 (defn get-host [& [opts]]
   (or (:host opts) "localhost"))
@@ -82,5 +89,8 @@
   [{:keys [nses] :as opts}]
   (println "Testing namespaces in container:" nses)
   (with-connection opts
-    (execute (run-command nses))))
+    (let [forms (macroexpand (list 'test-running-code nses))
+          code (repl/code forms)]
+      (println "Command:" forms)
+      (execute code))))
 
