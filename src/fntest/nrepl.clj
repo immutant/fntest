@@ -57,28 +57,23 @@
        (assoc m k v)))
    {} (apply concat results)))
 
-
 (defn execute [command]
-  ;;(println "\n  - Executing: " command)
+  ;; (println "\n  - Executing: " command)
   (let [result (parse (remote command))]
-    ;;(println "    - Result:" result)
-
+    ;; (println "    - Result:" result)
     (if (:out result)
       (println (:out result)))
     (if (:value result)
       (try
         (read-string (:value result))
         (catch java.lang.RuntimeException e
-          (if (= "Unreadable form" (.getMessage e))
-            nil
+          (if-not (= "Unreadable form" (.getMessage e))
             (throw e)))))))
-
 
 (defn midje-tests
   "Invokes the Midje test suite in the remote Clojure."
   [nses]
   (println "Running Midje tests...")
-
   (execute (pr-str (backtick/template (midje.util.ecosystem/set-leiningen-paths!
                                        {:test-paths [(immutant.util/app-relative "test")]
                                         :source-paths [(immutant.util/app-relative "src")]}))))
@@ -87,20 +82,17 @@
     (println "Midje tests done." failures-count "tests failed.")
     success?))
 
-
 (defn clojure-test-tests
   "Invokes the clojure.test test suite in the remote Clojure."
   [nses]
  (println "Running clojure.test tests...")
  (println "Testing namespaces in container:" nses)
- (execute (pr-str (backtick/template (apply require ~nses))))
+ (execute (pr-str (backtick/template (apply require '~nses))))
  (execute (pr-str (backtick/template (clojure.test/successful? (apply clojure.test/run-tests '~nses))))))
-
 
 (defn run-tests
   "Load test namespaces beneath dir and run them"
   [{:keys [nses] :as opts}]
-
   (println "Connecting to remote app...")
   (with-connection opts
     (if (execute (pr-str (backtick/template (try (require 'midje.repl)
