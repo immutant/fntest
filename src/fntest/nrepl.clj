@@ -17,31 +17,11 @@
 
 (ns fntest.nrepl
   (:require [clojure.tools.nrepl :as repl]
+            [backtick]
             [clojure.string :as str]
             [fntest.jboss :as jboss]))
 
 (def ^:dynamic *nrepl-conn*)
-
-(defmacro test-running-code
-  "Produces forms to be sent to the remote Immutant app that run tests
-  on the given namespaces." 
-  [nses]
-  (repl/code
-   `(try
-     (letfn (midje-available? []
-              (try (require 'midje.repl)
-                   (catch FileNotFoundException e
-                     false)))
-       (if (midje-available?)
-         (apply midje.repl/load-facts ~nses)
-         (do
-           (require 'clojure.test)
-           (apply require ~nses)
-           (clojure.test/successful? (apply clojure.test/run-tests ~nses)))))
-     (catch Exception e
-       (.printStackTrace e)
-       (.printStackTrace e *out*)
-       nil))))
 
 (defn get-host [& [opts]]
   (or (:host opts) "localhost"))
@@ -77,20 +57,57 @@
        (assoc m k v)))
    {} (apply concat results)))
 
+
 (defn execute [command]
+  ;;(println "\n  - Executing: " command)
   (let [result (parse (remote command))]
+    ;;(println "    - Result:" result)
+
     (if (:out result)
       (println (:out result)))
     (if (:value result)
-      (read-string (:value result)))))
+      (try
+        (read-string (:value result))
+        (catch java.lang.RuntimeException e
+          (if (= "Unreadable form" (.getMessage e))
+            nil
+            (throw e)))))))
+
+
+(defn midje-tests
+  "Invokes the Midje test suite in the remote Clojure."
+  [nses]
+  (println "Running Midje tests...")
+
+  (execute (pr-str (backtick/template (midje.util.ecosystem/set-leiningen-paths!
+                                       {:test-paths [(immutant.util/app-relative "test")]
+                                        :source-paths [(immutant.util/app-relative "src")]}))))
+  (let [failures-count (:failures (execute (pr-str (backtick/template (midje.repl/load-facts)))))
+        success? (= failures-count 0)]
+    (println "Midje tests done." failures-count "tests failed.")
+    success?))
+
+
+(defn clojure-test-tests
+  "Invokes the clojure.test test suite in the remote Clojure."
+  [nses]
+ (println "Running clojure.test tests...")
+ (println "Testing namespaces in container:" nses)
+ (execute (pr-str (backtick/template (apply require ~nses))))
+ (execute (pr-str (backtick/template (clojure.test/successful? (apply clojure.test/run-tests '~nses))))))
+
 
 (defn run-tests
   "Load test namespaces beneath dir and run them"
   [{:keys [nses] :as opts}]
-  (println "Testing namespaces in container:" nses)
+
+  (println "Connecting to remote app...")
   (with-connection opts
-    (let [forms (macroexpand (list 'test-running-code nses))
-          code (repl/code forms)]
-      (println "Command:" forms)
-      (execute code))))
+    (if (execute (pr-str (backtick/template (try (require 'midje.repl)
+                                                 true
+                                                 (catch java.io.FileNotFoundException e
+                                                   (require 'clojure.test)
+                                                   false)))))
+      (midje-tests nses)
+      (clojure-test-tests nses))))
 
