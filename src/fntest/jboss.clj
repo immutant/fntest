@@ -20,7 +20,8 @@
             [clojure.java.io     :as io]
             [jboss-as.management :as api]))
 
-(def ^:dynamic *home* (System/getenv "JBOSS_HOME"))
+(def ^:dynamic *home* (or (System/getenv "JBOSS_HOME")
+                          (io/file (System/getProperty "user.home") ".immutant/current/jboss")))
 (def ^:dynamic *descriptor-root* ".descriptors")
 
 (defn start-command []

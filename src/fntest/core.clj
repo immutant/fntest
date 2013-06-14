@@ -25,17 +25,16 @@
 
 (defn with-jboss
   "A test fixture for starting/stopping JBoss"
-  [f & [lazy]]
-  (let [already-running (and lazy
-                             (jboss/wait-for-ready?
-                              (if (number? lazy) lazy 0)))]
+  [f & [lazy?]]
+  (let [running? (jboss/wait-for-ready? 0)]
     (try
-      (when-not already-running
-        (jboss/start))
+      (when-not (and lazy? running?)
+        (jboss/start)
+        (jboss/wait-for-ready? 30))
       (f)
       (finally
-       (when-not already-running
-         (jboss/stop))))))
+        (when-not running?
+          (jboss/stop))))))
 
 (defn with-deployments
   "Returns a test fixture for deploying/undeploying multiple apps to a running JBoss"
