@@ -70,7 +70,7 @@
     (let [deployer (with-deployment name
                      (merge
                       {:root root
-                       :context-path (str name "-" (java.util.UUID/randomUUID))
+                       :context-path name
                        :lein-profiles profiles
                        :swank-port nil
                        :nrepl-port 0
