@@ -23,29 +23,39 @@
 
 (def port-file "target/test-repl-port")
 
+(def current-endpoint (atom nil))
+
 (defn with-jboss
   "A test fixture for starting/stopping JBoss"
-  [f & [lazy?]]
-  (let [running? (jboss/wait-for-ready? 0)]
-    (try
-      (when-not (and lazy? running?)
-        (jboss/start)
-        (jboss/wait-for-ready? 30))
-      (f)
-      (finally
-        (when-not running?
-          (jboss/stop))))))
+  ([f]
+     (with-jboss f true))
+  ([f isolated?]
+     (with-jboss f isolated? nil))
+  ([f isolated? endpoint]
+     (let [endpoint (or endpoint @current-endpoint)
+           running? (and endpoint (jboss/wait-for-ready? endpoint 0))]
+       (try
+         (when-not running?
+           (reset! current-endpoint (deref (jboss/start isolated?) 60000 :timeout))
+           (jboss/wait-for-ready? @current-endpoint 30))
+         (f)
+         (catch Throwable e
+           (.printStackTrace e))
+         (finally
+           (when-not running?
+             (jboss/stop @current-endpoint)))))))
 
 (defn with-deployments
   "Returns a test fixture for deploying/undeploying multiple apps to a running JBoss"
   [descriptor-map]
   (fn [f]
-    (if (jboss/wait-for-ready? (Integer. (or (System/getenv "WAIT_FOR_JBOSS") 60)))
+    (if (jboss/wait-for-ready? @current-endpoint
+                               (Integer. (or (System/getenv "WAIT_FOR_JBOSS") 60)))
       (try
-        (jboss/deploy descriptor-map)
+        (jboss/deploy @current-endpoint descriptor-map)
         (f)
         (finally
-         (apply jboss/undeploy (keys descriptor-map))))
+         (apply jboss/undeploy @current-endpoint (keys descriptor-map))))
       (println "Timed out waiting for JBoss (try setting WAIT_FOR_JBOSS=120)"))))
 
 (defn with-deployment
@@ -62,9 +72,10 @@
   "Starts up an Immutant, if necessary, deploys an application named
    by name and located at root, and invokes f, after which the app is
    undeployed, and the Immutant, if started, is shut down"
-  [name root & {:keys [jboss-home config dirs profiles]
+  [name root & {:keys [jboss-home config dirs profiles isolated? api-endpoint]
                 :or {jboss-home jboss/*home*
-                     profiles [:dev :test]}
+                     profiles [:dev :test]
+                     isolated? true}
                 :as opts}]
   (binding [jboss/*home* jboss-home]
     (let [deployer (with-deployment name
@@ -79,4 +90,4 @@
           f #(nrepl/run-tests (assoc opts
                                 :nses (locate-tests root dirs)
                                 :port-file (io/file root port-file)))]
-      (with-jboss #(deployer f) :lazy))))
+      (with-jboss #(deployer f) isolated? api-endpoint))))
