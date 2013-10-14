@@ -10,3 +10,5 @@
 target
 .lein-env
 .descriptors
+.nrepl-port
+.isolated-test-data

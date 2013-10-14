@@ -26,6 +26,17 @@
 (def ^:dynamic *descriptor-root* ".descriptors")
 (def ^:dynamic *isolation-dir* ".isolated-test-data")
 
+(defn- check-mode [mode modes]
+  (or (= mode modes)
+      (and (set? modes)
+           (some #{mode} modes))))
+
+(def isolated? (partial check-mode :isolated))
+
+(def lazy? (partial check-mode :lazy))
+
+(def offset? (partial check-mode :offset))
+
 (defn sysprop [name default]
   (format "-D%s=%s"
           name
@@ -33,30 +44,38 @@
             val
             default)))
 
+(defn default-endpoint [modes]
+  (if (offset? modes)
+    (let [offset (Integer. (or (System/getProperty "jboss.socket.binding.port-offset") 100))
+          port (nth (str/split api/*api-endpoint* #"[:/]") 4)]
+      (str/replace api/*api-endpoint* port (str (+ offset (Integer. port)))))
+    api/*api-endpoint*))
+
 (defn debug-options []
   (if (= "true" (System/getProperty "fntest.debug"))
     "-Xrunjdwp:transport=dt_socket,address=8787,server=y,suspend=y"))
 
-(defn isolated-options []
-  (let [data-dir (.getCanonicalPath (io/file *isolation-dir*))]
-    (mapv (fn [f] (.mkdirs (io/file data-dir f)))
-          ["data" "log" "deployments"])
-    [(sysprop "jboss.socket.binding.port-offset" "100")
-     (sysprop "jboss.server.log.dir" (format "%s/log" data-dir))
-     (sysprop "org.jboss.boot.log.file"
-              (format "%s/log/boot.log" data-dir))
-     (sysprop "jboss.server.data.dir" (format "%s/data" data-dir))
-     "--server-config=standalone-isolated-test.xml"]))
-
-(defn make-isolated-conf []
+(defn make-disabled-scanner-conf []
   (let [conf-dir (io/file *home* "standalone/configuration")]
-    (spit (io/file conf-dir "standalone-isolated-test.xml")
+    (spit (io/file conf-dir "standalone-disabled-scanner.xml")
           (str/replace
            (slurp (io/file conf-dir "standalone.xml"))
            #"(?s)<subsystem xmlns=\"urn:jboss:domain:deployment-scanner:1\.1\">.*?</subsystem>"
            ""))))
 
-(defn start-command [isolated?]
+(defn isolated-options []
+  (let [data-dir (.getCanonicalPath (io/file *isolation-dir*))]
+    (mapv (fn [f] (.mkdirs (io/file data-dir f)))
+          ["data" "log" "deployments"])
+    [(sysprop "jboss.server.log.dir" (format "%s/log" data-dir))
+     (sysprop "org.jboss.boot.log.file"
+              (format "%s/log/boot.log" data-dir))
+     (sysprop "jboss.server.data.dir" (format "%s/data" data-dir))]))
+
+(defn offset-options []
+  [(sysprop "jboss.socket.binding.port-offset" "100")])
+
+(defn start-command [modes]
   (let [java-home (System/getProperty "java.home")
         jboss-home (.getCanonicalFile (io/file *home*))]
     (-> [(str java-home "/bin/java")
@@ -76,13 +95,16 @@
          (format "-jar %s/jboss-modules.jar" jboss-home)
          (format "-mp %s/modules" jboss-home)
          "-jaxpmodule javax.xml.jaxp-provider"
-         "org.jboss.as.standalone"]
+         "org.jboss.as.standalone"
+         "--server-config=standalone-disabled-scanner.xml"]
         (concat
-         (if isolated?
+         (if (isolated? modes)
            (isolated-options)
            [(sysprop "org.jboss.boot.log.file"
                      (format "%s/standalone/log/boot.log"
-                             jboss-home))]))
+                             jboss-home))])
+         (if (offset? modes)
+           (offset-options)))
         (as-> x
               (remove nil? x)
               (str/join " " x)))))
@@ -107,18 +129,20 @@
 
 (defn start
   "Start up a JBoss, returning a promise that gives you its management url"
-  [isolated?]
+  [modes]
   (println "Starting JBoss")
-  (if isolated? (make-isolated-conf))
-  (let [cmd (start-command isolated?)
-        url (promise)]
-    (println cmd)
-    (sh/sh (str/split cmd #" ")
-           :line-fn (partial sh/find-management-endpoint
-                             #(deliver url %))
-           :pump-err? false
-           :pump-out? false)
-    url))
+  (if (ready? (default-endpoint modes))
+    (throw (Exception. "JBoss is already running!"))
+    (let [cmd (start-command modes)
+          url (promise)]
+      (make-disabled-scanner-conf)
+      (println cmd)
+      (sh/sh (str/split cmd #" ")
+             :line-fn (partial sh/find-management-endpoint
+                               #(deliver url %))
+             :pump-err? false
+             :pump-out? false)
+      url)))
 
 (defn stop
   "Shut down whatever JBoss instance is responding to api-url"

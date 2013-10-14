@@ -23,20 +23,27 @@
 
 (def port-file "target/test-repl-port")
 
+(def default-modes #{:isolated :offset})
+
 (def current-endpoint (atom nil))
+
+(defn some-endpoint [modes]
+  (or @current-endpoint
+      (jboss/default-endpoint modes)))
 
 (defn with-jboss
   "A test fixture for starting/stopping JBoss"
   ([f]
-     (with-jboss f true))
-  ([f isolated?]
-     (with-jboss f isolated? nil))
-  ([f isolated? endpoint]
-     (let [endpoint (or endpoint @current-endpoint)
-           running? (and endpoint (jboss/wait-for-ready? endpoint 0))]
+     (with-jboss default-modes f))
+  ([modes f]
+     (with-jboss modes nil f))
+  ([modes endpoint f]
+     (let [endpoint (or endpoint (some-endpoint modes))
+           running? (jboss/wait-for-ready? endpoint 0)]
        (try
          (when-not running?
-           (reset! current-endpoint (deref (jboss/start isolated?) 60000 :timeout))
+           (reset! current-endpoint
+                   (deref (jboss/start modes) 60000 :timeout))
            (jboss/wait-for-ready? @current-endpoint 30))
          (f)
          (catch Throwable e
@@ -47,21 +54,25 @@
 
 (defn with-deployments
   "Returns a test fixture for deploying/undeploying multiple apps to a running JBoss"
-  [descriptor-map]
-  (fn [f]
-    (if (jboss/wait-for-ready? @current-endpoint
-                               (Integer. (or (System/getenv "WAIT_FOR_JBOSS") 60)))
-      (try
-        (jboss/deploy @current-endpoint descriptor-map)
-        (f)
-        (finally
-         (apply jboss/undeploy @current-endpoint (keys descriptor-map))))
-      (println "Timed out waiting for JBoss (try setting WAIT_FOR_JBOSS=120)"))))
+  ([descriptor-map]
+     (with-deployments true descriptor-map))
+  ([modes descriptor-map]
+     (fn [f]
+       (if (jboss/wait-for-ready? (some-endpoint modes)
+                                  (Integer. (or (System/getenv "WAIT_FOR_JBOSS") 60)))
+         (try
+           (jboss/deploy (some-endpoint modes) descriptor-map)
+           (f)
+           (finally
+             (apply jboss/undeploy (some-endpoint modes) (keys descriptor-map))))
+         (println "Timed out waiting for JBoss (try setting WAIT_FOR_JBOSS=120)")))))
 
 (defn with-deployment
   "Returns a test fixture for deploying/undeploying an app to a running JBoss"
-  [name descriptor-or-file]
-  (with-deployments {name descriptor-or-file}))
+  ([name descriptor-or-file]
+     (with-deployment true name descriptor-or-file))
+  ([modes name descriptor-or-file]
+      (with-deployments modes {name descriptor-or-file})))
 
 (defn locate-tests
   "Locates the namespaces to be tested."
@@ -72,13 +83,13 @@
   "Starts up an Immutant, if necessary, deploys an application named
    by name and located at root, and invokes f, after which the app is
    undeployed, and the Immutant, if started, is shut down"
-  [name root & {:keys [jboss-home config dirs profiles isolated? api-endpoint]
+  [name root & {:keys [jboss-home config dirs profiles modes api-endpoint]
                 :or {jboss-home jboss/*home*
                      profiles [:dev :test]
-                     isolated? true}
+                     modes default-modes}
                 :as opts}]
   (binding [jboss/*home* jboss-home]
-    (let [deployer (with-deployment name
+    (let [deployer (with-deployment modes name 
                      (merge
                       {:root root
                        :context-path name
@@ -90,4 +101,4 @@
           f #(nrepl/run-tests (assoc opts
                                 :nses (locate-tests root dirs)
                                 :port-file (io/file root port-file)))]
-      (with-jboss #(deployer f) isolated? api-endpoint))))
+      (with-jboss modes api-endpoint #(deployer f)))))
