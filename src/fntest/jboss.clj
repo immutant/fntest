@@ -24,7 +24,7 @@
 (def ^:dynamic *home* (or (System/getenv "JBOSS_HOME")
                           (io/file (System/getProperty "user.home") ".immutant/current/jboss")))
 (def ^:dynamic *descriptor-root* ".descriptors")
-(def ^:dynamic *isolation-dir* ".isolated-test-data")
+(def ^:dynamic *isolation-dir* "target/isolated-immutant")
 
 (defn- check-mode [mode modes]
   (or (= mode modes)
@@ -55,22 +55,21 @@
   (if (= "true" (System/getProperty "fntest.debug"))
     "-Xrunjdwp:transport=dt_socket,address=8787,server=y,suspend=y"))
 
-(defn make-disabled-scanner-conf []
-  (let [conf-dir (io/file *home* "standalone/configuration")]
-    (spit (io/file conf-dir "standalone-disabled-scanner.xml")
-          (str/replace
-           (slurp (io/file conf-dir "standalone.xml"))
-           #"(?s)<subsystem xmlns=\"urn:jboss:domain:deployment-scanner:1\.1\">.*?</subsystem>"
-           ""))))
-
 (defn isolated-options []
-  (let [data-dir (.getCanonicalPath (io/file *isolation-dir*))]
-    (mapv (fn [f] (.mkdirs (io/file data-dir f)))
-          ["data" "log" "deployments"])
-    [(sysprop "jboss.server.log.dir" (format "%s/log" data-dir))
-     (sysprop "org.jboss.boot.log.file"
-              (format "%s/log/boot.log" data-dir))
-     (sysprop "jboss.server.data.dir" (format "%s/data" data-dir))]))
+  (let [base-dir (.getCanonicalPath (io/file *isolation-dir*))]
+    (mapv (fn [f] (.mkdirs (io/file base-dir f)))
+          ["deployments" "configuration"])
+    (mapv (fn [f] (io/copy (io/file *home* "standalone/configuration" f)
+                          (io/file base-dir "configuration" f)))
+          ["application-roles.properties" "application-users.properties"
+           "logging.properties" "mgmt-users.properties"
+           "standalone.xml"])
+    [(sysprop "org.jboss.boot.log.file"
+              (format "%s/log/boot.log" base-dir))
+     (sysprop "jboss.server.base.dir" base-dir)
+     (sysprop "logging.configuration"
+                  (format "file:%s/configuration/logging.properties"
+                          base-dir))]))
 
 (defn offset-options []
   [(sysprop "jboss.socket.binding.port-offset" "100")])
@@ -88,21 +87,21 @@
          (debug-options)
          (sysprop "org.jboss.resolver.warning" "true")
          (sysprop "sun.rmi.dgc.client.gcInterval" "3600000")
-         (sysprop "logging.configuration"
-                  (format "file:%s/standalone/configuration/logging.properties"
-                          jboss-home))
          (sysprop "jboss.home.dir" jboss-home)
          (format "-jar %s/jboss-modules.jar" jboss-home)
          (format "-mp %s/modules" jboss-home)
          "-jaxpmodule javax.xml.jaxp-provider"
          "org.jboss.as.standalone"
-         "--server-config=standalone-disabled-scanner.xml"]
+         "--server-config=standalone.xml"]
         (concat
          (if (isolated? modes)
            (isolated-options)
            [(sysprop "org.jboss.boot.log.file"
                      (format "%s/standalone/log/boot.log"
-                             jboss-home))])
+                             jboss-home))
+            (sysprop "logging.configuration"
+                  (format "file:%s/standalone/configuration/logging.properties"
+                          jboss-home))])
          (if (offset? modes)
            (offset-options)))
         (as-> x
@@ -135,7 +134,6 @@
     (throw (Exception. "JBoss is already running!"))
     (let [cmd (start-command modes)
           url (promise)]
-      (make-disabled-scanner-conf)
       (println cmd)
       (sh/sh (str/split cmd #" ")
              :line-fn (partial sh/find-management-endpoint
