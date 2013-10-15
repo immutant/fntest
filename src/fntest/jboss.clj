@@ -25,6 +25,7 @@
                           (io/file (System/getProperty "user.home") ".immutant/current/jboss")))
 (def ^:dynamic *descriptor-root* ".descriptors")
 (def ^:dynamic *isolation-dir* "target/isolated-immutant")
+(def ^:dynamic *port-offset* 67)
 
 (defn- check-mode [mode modes]
   (or (= mode modes)
@@ -46,7 +47,7 @@
 
 (defn default-endpoint [modes]
   (if (offset? modes)
-    (let [offset (Integer. (or (System/getProperty "jboss.socket.binding.port-offset") 100))
+    (let [offset (Integer. (or (System/getProperty "jboss.socket.binding.port-offset") *port-offset*))
           port (nth (str/split api/*api-endpoint* #"[:/]") 4)]
       (str/replace api/*api-endpoint* port (str (+ offset (Integer. port)))))
     api/*api-endpoint*))
@@ -72,7 +73,7 @@
                           base-dir))]))
 
 (defn offset-options []
-  [(sysprop "jboss.socket.binding.port-offset" "100")])
+  [(sysprop "jboss.socket.binding.port-offset" (str *port-offset*))])
 
 (defn start-command [modes]
   (let [java-home (System/getProperty "java.home")
