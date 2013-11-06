@@ -63,14 +63,10 @@
     (mapv (fn [f] (io/copy (io/file *home* "standalone/configuration" f)
                           (io/file base-dir "configuration" f)))
           ["application-roles.properties" "application-users.properties"
-           "logging.properties" "mgmt-users.properties"
-           "standalone.xml"])
+           "mgmt-users.properties" "standalone.xml"])
     [(sysprop "org.jboss.boot.log.file"
               (format "%s/log/boot.log" base-dir))
-     (sysprop "jboss.server.base.dir" base-dir)
-     (sysprop "logging.configuration"
-                  (format "file:%s/configuration/logging.properties"
-                          base-dir))]))
+     (sysprop "jboss.server.base.dir" base-dir)]))
 
 (defn offset-options []
   [(sysprop "jboss.socket.binding.port-offset" (str *port-offset*))])
@@ -93,16 +89,15 @@
          (format "-mp %s/modules" jboss-home)
          "-jaxpmodule javax.xml.jaxp-provider"
          "org.jboss.as.standalone"
-         "--server-config=standalone.xml"]
+         "--server-config=standalone.xml"
+         (format "-Dlogging.configuration=file:%s/standalone/configuration/logging.properties"
+                 jboss-home)]
         (concat
          (if (isolated? modes)
            (isolated-options)
            [(sysprop "org.jboss.boot.log.file"
                      (format "%s/standalone/log/boot.log"
-                             jboss-home))
-            (sysprop "logging.configuration"
-                  (format "file:%s/standalone/configuration/logging.properties"
-                          jboss-home))])
+                             jboss-home))])
          (if (offset? modes)
            (offset-options)))
         (as-> x
