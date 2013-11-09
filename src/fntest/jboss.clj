@@ -16,9 +16,7 @@
 ;; 02110-1301 USA, or see the FSF site: http://www.fsf.org.
 
 (ns fntest.jboss
-  (:require [fntest.sh           :as sh]
-            [clojure.java.io     :as io]
-            [clojure.string      :as str]
+  (:require [clojure.java.io     :as io]
             [jboss-as.management :as api]))
 
 (def ^:dynamic *home*
