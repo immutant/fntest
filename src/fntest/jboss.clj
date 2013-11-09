@@ -29,15 +29,18 @@
 (def ^:dynamic *port-offset* 67)
 
 (defn- check-mode [mode modes]
-  (or (= mode modes)
-      (and (set? modes)
-           (some #{mode} modes))))
+  (boolean
+   (or (= mode modes)
+       (and (set? modes)
+            (some #{mode} modes)))))
 
 (def isolated? (partial check-mode :isolated))
 
 (def offset? (partial check-mode :offset))
 
 (def domain? (partial check-mode :domain))
+
+(def debug? (partial check-mode :debug))
 
 (defn isolated-base-dir [modes jboss-home]
   (let [base (if (domain? modes) "domain" "standalone")]
@@ -61,7 +64,7 @@
                      :offset (if (offset? modes) *port-offset* 0)
                      :jboss-home *home*
                      :base-dir (isolated-base-dir modes *home*)
-                     :debug (= "true" (System/getProperty "fntest.debug"))))
+                     :debug (debug? modes)))
 
 (defn wait-for-ready?
   [server attempts]
@@ -107,13 +110,9 @@
   ([server name content]
      (let [file (if (instance? java.io.File content) content (descriptor name content))
            fname (.getName file)
-           url (.toURL file)
-           add (api/add server fname url)]
+           url (.toURL file)]
        (println "Deploying" (.getCanonicalPath file))
-       (when-not (= "success" (:outcome add))
-         (api/undeploy server fname)
-         (api/add server fname url))
-       (api/deploy server fname))))
+       (api/deploy server fname url))))
 
 (defn undeploy
   "Undeploy the apps deployed under the given names"
