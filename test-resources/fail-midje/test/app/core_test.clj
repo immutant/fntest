@@ -3,3 +3,5 @@
 
 (fact "truth is" false => true)
 
+(fact "truth is exceptional" (throw (Exception.)) => true)
+
