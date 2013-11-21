@@ -64,25 +64,6 @@
                      :base-dir (isolated-base-dir modes *home*)
                      :debug (debug? modes)))
 
-(defn wait-for-ready?
-  [server attempts]
-  (api/wait-for-ready? server attempts))
-
-(defn ready? [server]
-  (api/ready? server))
-
-(defn start
-  "Start up a JBoss, returning a promise that gives you its management url"
-  [server]
-  (println "Starting JBoss")
-  (api/start server))
-
-(defn stop
-  "Shut down whatever JBoss instance is responding to api-url"
-  [server]
-  (println "Stopping JBoss")
-  (api/stop server))
-
 (defn descriptor
   "Return a File object representing the deployment descriptor"
   [name & [content]]

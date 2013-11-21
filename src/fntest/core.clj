@@ -16,10 +16,11 @@
 ;; 02110-1301 USA, or see the FSF site: http://www.fsf.org.
 
 (ns fntest.core
-  (:require [fntest.jboss    :as jboss]
-            [fntest.nrepl    :as nrepl]
-            [bultitude.core  :as bc]
-            [clojure.java.io :as io]))
+  (:require [jboss-as.management :as api]
+            [fntest.jboss        :as jboss]
+            [fntest.nrepl        :as nrepl]
+            [bultitude.core      :as bc]
+            [clojure.java.io     :as io]))
 
 (def port-file "target/test-repl-port")
 
@@ -33,23 +34,32 @@
      (with-jboss default-modes f))
   ([modes f]
      (binding [*server* (jboss/create-server modes)]
-       (let [running? (jboss/wait-for-ready? *server* 0)]
+       (let [running? (api/wait-for-ready? *server* 0)]
          (try
            (when-not running?
-             (jboss/start *server*)
-             (jboss/wait-for-ready? *server* 30))
+             (println "Starting JBoss")
+             (api/start *server*)
+             (api/wait-for-ready? *server* 30))
            (f)
            (catch Throwable e
              (.printStackTrace e))
            (finally
              (when-not running?
-               (jboss/stop *server*))))))))
+               (println "Stopping JBoss")
+               (api/stop *server*))))))))
+
+(defn offset-port
+  "Resolves port based on the server's offset, if any. Keywords may be
+   passed, e.g. :http, :messaging, :remoting, :management-native. The
+   optional host arg refers to the name of a host in a domain"
+  [port & [host]]
+  (api/port *server* port host))
 
 (defn with-deployments
   "Returns a test fixture for deploying/undeploying multiple apps to a running JBoss"
   [descriptor-map]
   (fn [f]
-    (if (jboss/wait-for-ready? *server* (Integer. (or (System/getenv "WAIT_FOR_JBOSS") 60)))
+    (if (api/wait-for-ready? *server* (Integer. (or (System/getenv "WAIT_FOR_JBOSS") 60)))
       (try
         (jboss/deploy *server* descriptor-map)
         (f)
