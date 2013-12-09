@@ -65,7 +65,7 @@
         (f)
         (finally
           (apply jboss/undeploy *server* (keys descriptor-map))))
-      (println "Timed out waiting for JBoss (try setting WAIT_FOR_JBOSS=120)"))))
+      (throw (Exception. "Timed out waiting for JBoss (try setting WAIT_FOR_JBOSS=120)")))))
 
 (defn with-deployment
   "Returns a test fixture for deploying/undeploying an app to a running JBoss"
