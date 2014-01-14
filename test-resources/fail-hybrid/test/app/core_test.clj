@@ -5,4 +5,5 @@
 (fact "truth is" false => true)
 
 (deftest truth
+  (println "JC truth")
   (is (not true)))
