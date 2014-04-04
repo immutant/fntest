@@ -81,12 +81,14 @@
   "Starts up an Immutant, if necessary, deploys an application named
    by name and located at root, and invokes f, after which the app is
    undeployed, and the Immutant, if started, is shut down"
-  [name root & {:keys [jboss-home config dirs profiles modes]
+  [name root & {:keys [jboss-home config dirs profiles modes offset log-level]
                 :or {jboss-home jboss/*home*
                      profiles [:dev :test]
                      modes default-modes}
                 :as opts}]
-  (binding [jboss/*home* jboss-home]
+  (binding [jboss/*home* jboss-home
+            jboss/*port-offset* (or offset jboss/*port-offset*)
+            jboss/*log-level* (or log-level jboss/*log-level*)]
     (let [deployer (with-deployment name 
                      (merge
                       {:root root

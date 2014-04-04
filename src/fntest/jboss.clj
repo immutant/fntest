@@ -25,6 +25,7 @@
 (def ^:dynamic *descriptor-root* ".descriptors")
 (def ^:dynamic *isolation-dir* "target/isolated-immutant")
 (def ^:dynamic *port-offset* 67)
+(def ^:dynamic *log-level* :INFO)
 
 (defn- check-mode [mode modes]
   (boolean
@@ -61,6 +62,7 @@
   (api/create-server :domain (domain? modes)
                      :offset (if (offset? modes) *port-offset* 0)
                      :jboss-home *home*
+                     :log-level *log-level*
                      :base-dir (isolated-base-dir modes *home*)
                      :debug (debug? modes)))
 
