@@ -30,5 +30,10 @@ deployed application itself. Here's an example:
       (is (fnt/test-in-container "some-name" "./" :dirs ["container"])))
 ```
 
-Both [Midje](https://github.com/marick/Midje) and `clojure.test` tests
-are supported by `fntest.core/test-in-container`.
+[Midje](https://github.com/marick/Midje), [Expectations](https://github.com/jaycfields/expectations)
+ and `clojure.test` tests are supported by `fntest.core/test-in-container`. Which tests are
+ run depends on which testing library is found on the classpath. If Midje is present, then both
+ Midje and `clojure.test` tests are run via the Midje test runner.  If Midje is not found, but
+ Expectations is present, then only the Exepctations tests are run. If neither Midje nor
+ Expectations is found, the standard `clojure.test` test runner is used.
+ 
