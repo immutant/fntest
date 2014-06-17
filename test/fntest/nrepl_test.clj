@@ -27,3 +27,9 @@
 
 (deftest verify-only-core-failed
   (is (not (test-in-container "fail-hybrid" "test-resources/fail-core-pass-midje"))))
+
+(deftest verity-success-expectations-tests
+  (is (test-in-container "pass-expectations" "test-resources/pass-expectations")))
+
+(deftest verify-fail-expectations-tests
+  (is (not (test-in-container "fail-expectations" "test-resources/fail-expectations"))))

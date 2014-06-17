@@ -82,6 +82,16 @@
     (println "Midje tests done." failures-count "tests failed.")
     success?))
 
+(defn expectations-tests
+  "Invokes the expectations test suite in the remote Clojure."
+  [nses]
+  (println "Running expectations tests...")
+  (println "Testing namespaces in container: " nses)
+  (execute (pr-str (backtick/template (apply require '~nses))))
+  (execute (pr-str (backtick/template (expectations/disable-run-on-shutdown))))
+  (let [{:keys [error fail]} (execute (pr-str (backtick/template (expectations/run-tests '~nses))))]
+    (and (zero? error) (zero? fail))))
+
 (defn clojure-test-tests
   "Invokes the clojure.test test suite in the remote Clojure."
   [nses]
@@ -90,16 +100,26 @@
  (execute (pr-str (backtick/template (apply require '~nses))))
  (execute (pr-str (backtick/template (clojure.test/successful? (apply clojure.test/run-tests '~nses))))))
 
+(defn try-require
+  [ns]
+  (execute (pr-str (backtick/template (try
+                                        (require '~ns)
+                                        true
+                                        (catch java.io.FileNotFoundException _
+                                          false))))))
+
+(defn select-test-runner
+  []
+  (cond
+   (try-require 'midje.repl)   midje-tests
+   (try-require 'expectations) expectations-tests
+   (try-require 'clojure.test) clojure-test-tests
+   :else (throw (Exception. "Failed to load a test runner"))))
+
 (defn run-tests
   "Load test namespaces beneath dir and run them"
   [{:keys [nses] :as opts}]
   (println "Connecting to remote app...")
   (with-connection opts
-    (if (execute (pr-str (backtick/template (try (require 'midje.repl)
-                                                 true
-                                                 (catch java.io.FileNotFoundException e
-                                                   (require 'clojure.test)
-                                                   false)))))
-      (midje-tests nses)
-      (clojure-test-tests nses))))
-
+    (let [test-runner (select-test-runner)]
+      (test-runner nses))))
