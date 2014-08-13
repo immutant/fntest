@@ -119,7 +119,12 @@
 (defn run-tests
   "Load test namespaces beneath dir and run them"
   [{:keys [nses] :as opts}]
-  (println "Connecting to remote app...")
-  (with-connection opts
-    (let [test-runner (select-test-runner)]
-      (test-runner nses))))
+  (if (seq nses)
+    (do
+      (println "Connecting to remote app...")
+      (with-connection opts
+        (let [test-runner (select-test-runner)]
+          (test-runner nses))))
+    (do
+      (println "No tests found.")
+      true)))
