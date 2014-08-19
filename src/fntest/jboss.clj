@@ -72,7 +72,7 @@
        (deploy server name war)))
   ([server name war]
      (let [file (io/file war)]
-       (println "Deploying" (.getCanonicalPath file))
+       (println "Deploying" (.getCanonicalPath file) "as" name)
        (api/deploy server name (.toURL file)))))
 
 (defn undeploy
