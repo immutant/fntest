@@ -138,7 +138,9 @@
                            set-init
                            enable-dev
                            (enable-nrepl port-file)))))
-          f #(nrepl/run-tests (assoc opts
-                                :nses (locate-tests root dirs)
-                                :port-file port-file))]
+          f #(if (.exists port-file)
+               (nrepl/run-tests (assoc opts
+                                   :nses (locate-tests root dirs)
+                                   :port-file port-file))
+               (println "Oops! Something went wrong. Please check the WildFly server log."))]
       (with-jboss modes #(deployer f)))))
