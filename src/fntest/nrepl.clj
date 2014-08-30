@@ -74,7 +74,7 @@
 
 (defn midje-tests
   "Invokes the Midje test suite in the remote Clojure."
-  [nses opts]
+  [nses _]
   (println "Running Midje tests...")
   (execute (pr-str (backtick/template (midje.util.ecosystem/set-leiningen-paths!
                                        {:test-paths [(immutant.util/app-relative "test")]
@@ -86,7 +86,7 @@
 
 (defn expectations-tests
   "Invokes the expectations test suite in the remote Clojure."
-  [nses opts]
+  [nses _]
   (println "Running expectations tests...")
   (println "Testing namespaces in container: " nses)
   (execute (pr-str (backtick/template (apply require '~nses))))
@@ -94,13 +94,13 @@
   (let [{:keys [error fail]} (execute (pr-str (backtick/template (expectations/run-tests '~nses))))]
     (and (zero? error) (zero? fail))))
 
-(defn build-test-call [nses format to-file output-file]
+(defn build-test-call [nses format output-file]
   (let [format-fn (cond (= format "tap")
                         'clojure.test.tap/with-tap-output
                         (= format "junit")
                         'clojure.test.junit/with-junit-output
-                        :else 'identity)]
-    (if to-file
+                        :else 'do)]
+    (if output-file
       (backtick/template (with-open [results
                                      (java.io.FileWriter. ~output-file)]
                            (binding [clojure.test/*test-out* results]
@@ -110,12 +110,12 @@
 
 (defn clojure-test-tests
   "Invokes the clojure.test test suite in the remote Clojure."
-  [nses {:keys [format to-file output-file]}]
+  [nses {:keys [format output-file]}]
   (println "Running clojure.test tests...")
   (println "Testing namespaces in container:" nses)
 
-  (if to-file
-    (println "Writing to file " output-file))
+  (if output-file
+    (println "Writing to file: " output-file))
   (cond (= format "tap")
         (do (println "Producing TAP output")
             (execute (pr-str (backtick/template (require 'clojure.test.tap)))))
@@ -125,7 +125,7 @@
 
   (execute (pr-str (backtick/template (apply require '~nses))))
 
-  (let [call (build-test-call nses format to-file output-file)]
+  (let [call (build-test-call nses format output-file)]
     (execute (pr-str (backtick/template
                       (clojure.test/successful?
                        ~call))))))
