@@ -1,4 +1,4 @@
-(defproject org.immutant/fntest "0.5.5"
+(defproject org.immutant/fntest "0.5.6-SNAPSHOT"
   :description "A harness for running Immutant integration tests"
   :url "https://github.com/immutant/fntest"
   :license {:name "Eclipse Public License"
