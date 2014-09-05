@@ -115,7 +115,7 @@
   (println "Testing namespaces in container:" nses)
 
   (if output-file
-    (println "Writing to file: " output-file))
+    (println "Writing to file:" output-file))
   (cond (= format "tap")
         (do (println "Producing TAP output")
             (execute (pr-str (backtick/template (require 'clojure.test.tap)))))
