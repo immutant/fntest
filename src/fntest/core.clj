@@ -111,7 +111,9 @@
   (assoc project :classpath (cp/get-classpath project)))
 
 (defn set-init [project]
-  (assoc project :init-fn (symbol (str (:main project)) "-main")))
+  (if (:main project)
+    (assoc project :init-fn (symbol (str (:main project)) "-main"))
+    project))
 
 (defn test-in-container
   "Starts up a container, if necessary, deploys an application named
@@ -129,7 +131,8 @@
           project (project/read
                     (.getAbsolutePath (io/file root "project.clj"))
                     profiles)
-          deployer (with-deployment name
+          deployer (with-deployment
+                     (if (.endsWith name ".war") name (str name ".war"))
                      (or war-file
                        (war/create-war
                          (File/createTempFile "fntest" ".war")
