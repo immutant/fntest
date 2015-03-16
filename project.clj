@@ -11,4 +11,4 @@
   :profiles {:dev
              {:dependencies [[org.clojure/clojure "1.5.1"]]}}
   :signing {:gpg-key "BFC757F9"}
-  :lein-release {:deploy-via :clojars})
+  :deploy-repositories {"releases" :clojars})
