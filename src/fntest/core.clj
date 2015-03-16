@@ -19,29 +19,15 @@
   (:require [jboss-as.management       :as api]
             [fntest.jboss              :as jboss]
             [fntest.nrepl              :as nrepl]
+            [fntest.war                :as war]
             [bultitude.core            :as bc]
-            [clojure.java.io           :as io]
-            [clojure.string            :as str]
-            [leiningen.core.project    :as project]
-            [leiningen.core.classpath  :as cp]
-            [immutant.deploy-tools.war :as war])
-  (:import java.io.File))
+            [clojure.java.io           :as io]))
 
 (def default-port-file "target/test-repl-port")
 
-(def default-modes #{:isolated :offset})
+(def default-modes #{:isolated :offset}) ; :domain :debug
 
 (def ^:dynamic *server*)
-
-(defn disable-management-security [config]
-  (str/replace config
-    #"(<http-interface )(security-realm=['\"]ManagementRealm['\"])"
-    "$1"))
-
-(defn enable-domain-port-offset [config]
-  (when-not (re-find #"port-offset:0" config)
-    (str/replace config #"(<server name=\"server-one\" group=\"main-server-group\">)"
-      "$1\n<socket-bindings port-offset=\"\\${jboss.socket.binding.port-offset:0}\"/>")))
 
 (defn with-jboss
   "A test fixture for starting/stopping JBoss"
@@ -49,12 +35,6 @@
      (with-jboss default-modes f))
   ([modes f]
      (binding [*server* (jboss/create-server modes)]
-       (when (jboss/isolated? modes)
-         (if (jboss/domain? modes)
-           (do
-             (api/alter-config! *server* disable-management-security "host.xml")
-             (api/alter-config! *server* enable-domain-port-offset "host.xml"))
-           (api/alter-config! *server* disable-management-security)))
        (let [running? (api/wait-for-ready? *server* 0)]
          (try
            (when-not running?
@@ -90,60 +70,36 @@
 
 (defn with-deployment
   "Returns a test fixture for deploying/undeploying an app to a running JBoss"
-  [name war-file]
-  (with-deployments {name war-file}))
+  [name path & opts]
+  (with-deployments
+    {(if (.endsWith name ".war")
+       name
+       (str name ".war"))
+     (if (.exists (io/file path "project.clj"))
+       (apply war/project->war path opts)
+       path)}))
 
 (defn locate-tests
   "Locates the namespaces to be tested."
   [root dirs]
   (mapcat #(bc/namespaces-in-dir %) (or dirs [(io/file root "test")])))
 
-(defn enable-dev [project]
-  (assoc project :dev? true))
-
-(defn enable-nrepl [project port-file]
-  (update-in project [:nrepl] merge
-    {:start? true
-     :port 0
-     :port-file (.getAbsolutePath port-file)}))
-
-(defn set-classpath [project]
-  (assoc project :classpath (cp/get-classpath project)))
-
-(defn set-init [project]
-  (if (:main project)
-    (assoc project :init-fn (symbol (str (:main project)) "-main"))
-    project))
-
 (defn test-in-container
   "Starts up a container, if necessary, deploys an application named
    by name and located at root, and invokes f, after which the app is
    undeployed, and the Immutant, if started, is shut down"
   [name root & {:keys [jboss-home profiles dirs modes offset log-level war-file port-file]
-           :or {jboss-home jboss/*home*
-                profiles [:dev :test]
-                modes default-modes}
+                :or {jboss-home jboss/*home*
+                     modes default-modes}
                 :as opts}]
   (binding [jboss/*home* jboss-home
             jboss/*port-offset* (or offset jboss/*port-offset*)
             jboss/*log-level* (or log-level jboss/*log-level*)]
     (let [port-file (or port-file (io/file root default-port-file))
-          project (project/read
-                    (.getAbsolutePath (io/file root "project.clj"))
-                    profiles)
-          deployer (with-deployment
-                     (if (.endsWith name ".war") name (str name ".war"))
-                     (or war-file
-                       (war/create-war
-                         (File/createTempFile "fntest" ".war")
-                         (-> project
-                           set-classpath
-                           set-init
-                           enable-dev
-                           (enable-nrepl port-file)))))
+          deployer (with-deployment name (or war-file root), :port-file port-file, :profiles profiles)
           f #(if (.exists port-file)
                (nrepl/run-tests (assoc opts
-                                   :nses (locate-tests root dirs)
-                                   :port-file port-file))
+                                  :nses (locate-tests root dirs)
+                                  :port-file port-file))
                (println "Oops! Something went wrong. Please check the WildFly server log."))]
       (with-jboss modes #(deployer f)))))

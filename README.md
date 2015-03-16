@@ -4,7 +4,7 @@ Used internally by both the `test` task of the
 [lein-immutant plugin](https://github.com/immutant/lein-immutant) and
 Immutant's own integration tests, this library enables you to test
 against your application while deployed on
-[Immutant](http://immutant.org) or even run your tests within the
+[WildFly](http://wildfly.org) or even run your tests within the
 deployed application itself. Here's an example:
 
 ```clojure
@@ -17,7 +17,7 @@ deployed application itself. Here's an example:
     (use-fixtures :once
       (compose-fixtures
         fnt/with-jboss
-        (fnt/with-deployment *file* {:root "./", :context-path "/foo"})))
+        (fnt/with-deployment "some-name" "/path/to/war-file/or/lein/project")))
 
     ;;; Run browser tests against the deployed app
     (deftest remote-http-test
@@ -34,6 +34,6 @@ deployed application itself. Here's an example:
  and `clojure.test` tests are supported by `fntest.core/test-in-container`. Which tests are
  run depends on which testing library is found on the classpath. If Midje is present, then both
  Midje and `clojure.test` tests are run via the Midje test runner.  If Midje is not found, but
- Expectations is present, then only the Exepctations tests are run. If neither Midje nor
+ Expectations is present, then only the Expectations tests are run. If neither Midje nor
  Expectations is found, the standard `clojure.test` test runner is used.
  

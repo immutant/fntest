@@ -17,7 +17,8 @@
 
 (ns fntest.jboss
   (:require [clojure.java.io     :as io]
-            [jboss-as.management :as api]))
+            [jboss-as.management :as api]
+            [clojure.string      :as str]))
 
 (def ^:dynamic *home*
   (or (System/getenv "WILDFLY_HOME")
@@ -28,9 +29,9 @@
 
 (defn- check-mode [mode modes]
   (boolean
-   (or (= mode modes)
-       (and (set? modes)
-            (some #{mode} modes)))))
+    (or (= mode modes)
+      (and (set? modes)
+        (some #{mode} modes)))))
 
 (def isolated? (partial check-mode :isolated))
 
@@ -57,13 +58,44 @@
         (.getCanonicalPath base-dir))
       (.getCanonicalPath (io/file jboss-home base)))))
 
+(defn change-cluster-password [config]
+  (str/replace config
+    #"(<cluster-password>)[^<]*"
+    "$1fntest"))
+
+(defn set-main-server-group-full-ha [config]
+  (-> config
+    (str/replace
+      #"(main-server-group\" profile=\"full)\""
+      "$1-ha\"")
+    (str/replace
+      #"(ref=\"full)(-sockets\")"
+      "$1-ha$2")))
+
+(defn disable-management-security [config]
+  (str/replace config
+    #"(<http-interface )(security-realm=['\"]ManagementRealm['\"])"
+    "$1"))
+
+(defn enable-domain-port-offset [config]
+  (when-not (re-find #"port-offset:0" config)
+    (str/replace config #"(<server name=\"server-one\" group=\"main-server-group\">)"
+      "$1\n<socket-bindings port-offset=\"\\${jboss.socket.binding.port-offset:0}\"/>")))
+
 (defn create-server [modes]
-  (api/create-server :domain (domain? modes)
-                     :offset (if (offset? modes) *port-offset* 0)
-                     :jboss-home *home*
-                     :log-level *log-level*
-                     :base-dir (isolated-base-dir modes *home*)
-                     :debug (debug? modes)))
+  (let [result (api/create-server :domain (domain? modes)
+                 :offset (if (offset? modes) *port-offset* 0)
+                 :jboss-home *home*
+                 :log-level *log-level*
+                 :base-dir (isolated-base-dir modes *home*)
+                 :debug (debug? modes))]
+    (when (isolated? modes)
+      (if (domain? modes)
+        (do
+          (api/alter-config! result (comp change-cluster-password set-main-server-group-full-ha))
+          (api/alter-config! result (comp enable-domain-port-offset disable-management-security) "host.xml"))
+        (api/alter-config! result disable-management-security)))
+    result))
 
 (defn deploy
   "Deploy with the given deployment name and war file."
