@@ -42,8 +42,6 @@
              (api/start *server*)
              (api/wait-for-ready? *server* 30))
            (f)
-           (catch Throwable e
-             (.printStackTrace e))
            (finally
              (when-not running?
                (println "Stopping JBoss")

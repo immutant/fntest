@@ -15,43 +15,17 @@
 ;; Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 ;; 02110-1301 USA, or see the FSF site: http://www.fsf.org.
 
-(ns fntest.war
+(ns fntest.util
   (:require [immutant.deploy-tools.war :as war]
             [clojure.java.io           :as io]
             [leiningen.core.project    :as prj]
-            [leiningen.core.classpath  :as cp]
-            [fntest.util :refer (status)])
+            [leiningen.core.classpath  :as cp])
   (:import java.io.File))
 
-(defn enable-dev [project]
-  (assoc project :dev? true))
-
-(defn enable-nrepl [project port-file]
-  (if port-file
-    (update-in project [:nrepl] merge
-      {:start? true
-       :port 0
-       :port-file (.getAbsolutePath port-file)})
-    project))
-
-(defn set-classpath [project]
-  (assoc project :classpath (cp/get-classpath project)))
-
-(defn set-init [project]
-  (if (:main project)
-    (assoc project :init-fn (symbol (str (:main project)) "-main"))
-    project))
-
-(defn project->war
-  [root & {:keys [port-file profiles]}]
-  (let [project (prj/read
-                  (.getAbsolutePath (io/file root "project.clj"))
-                  (or profiles [:dev :test]))]
-    (status "Creating war file"
-      (war/create-war
-        (File/createTempFile "fntest" ".war")
-        (-> project
-          set-classpath
-          set-init
-          enable-dev
-          (enable-nrepl port-file))))))
+(defmacro status [msg cmd]
+  `(do
+     (print (str ~msg "... "))
+     (flush)
+     (let [v# ~cmd]
+       (println "done!")
+       v#)))

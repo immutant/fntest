@@ -18,7 +18,8 @@
 (ns fntest.jboss
   (:require [clojure.java.io     :as io]
             [jboss-as.management :as api]
-            [clojure.string      :as str]))
+            [clojure.string      :as str]
+            [fntest.util :refer (status)]))
 
 (def ^:dynamic *home*
   (or (System/getenv "WILDFLY_HOME")
@@ -104,12 +105,12 @@
        (deploy server name war)))
   ([server name war]
      (let [file (io/file war)]
-       (println "Deploying" (.getCanonicalPath file) "as" name)
-       (api/deploy server name (.toURL file)))))
+       (status (format "Deploying %s as %s" (.getCanonicalPath file) name)
+         (api/deploy server name (.toURL file))))))
 
 (defn undeploy
   "Undeploy the apps deployed under the given names"
   [server & names]
   (doseq [name names]
-    (println "Undeploying" name)
-    (api/undeploy server name)))
+    (status (str "Undeploying " name)
+      (api/undeploy server name))))
