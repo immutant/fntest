@@ -5,7 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[jboss-as-management "0.4.1"]
                  [org.clojure/tools.nrepl "0.2.3"]
-                 [org.immutant/deploy-tools "2.0.0"]
+                 [org.immutant/deploy-tools "2.0.4"]
                  [backtick "0.1.0"]
                  [bultitude "0.2.6"]]
   :profiles {:dev
