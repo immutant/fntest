@@ -16,12 +16,13 @@
 ;; 02110-1301 USA, or see the FSF site: http://www.fsf.org.
 
 (ns fntest.core
-  (:require [jboss-as.management       :as api]
-            [fntest.jboss              :as jboss]
-            [fntest.nrepl              :as nrepl]
-            [fntest.war                :as war]
-            [bultitude.core            :as bc]
-            [clojure.java.io           :as io]))
+  (:require [jboss-as.management :as api]
+            [fntest.jboss        :as jboss]
+            [fntest.nrepl        :as nrepl]
+            [fntest.war          :as war]
+            [fntest.util         :refer [error warn info] :as util]
+            [bultitude.core      :as bc]
+            [clojure.java.io     :as io]))
 
 (def default-port-file "target/test-repl-port")
 
@@ -38,13 +39,13 @@
        (let [running? (api/wait-for-ready? *server* 0)]
          (try
            (when-not running?
-             (println "Starting JBoss")
+             (info "Starting JBoss\n")
              (api/start *server*)
              (api/wait-for-ready? *server* 30))
            (f)
            (finally
              (when-not running?
-               (println "Stopping JBoss")
+               (info "Stopping JBoss\n")
                (api/stop *server*))))))))
 
 (defn offset-port
@@ -86,18 +87,21 @@
   "Starts up a container, if necessary, deploys an application named
    by name and located at root, and invokes f, after which the app is
    undeployed, and the Immutant, if started, is shut down"
-  [name root & {:keys [jboss-home profiles dirs modes offset log-level war-file port-file]
+  [name root & {:keys [jboss-home profiles dirs modes offset log-level war-file port-file
+                       output-fns isolation-dir]
                 :or {jboss-home jboss/*home*
                      modes default-modes}
                 :as opts}]
   (binding [jboss/*home* jboss-home
             jboss/*port-offset* (or offset jboss/*port-offset*)
-            jboss/*log-level* (or log-level jboss/*log-level*)]
-    (let [port-file (or port-file (io/file root default-port-file))
+            jboss/*log-level* (or log-level jboss/*log-level*)
+            jboss/*isolation-dir* (or isolation-dir jboss/*isolation-dir*)
+            util/*output-fns* (or output-fns util/*output-fns*)]
+    (let [port-file (if port-file (io/file port-file) (io/file root default-port-file))
           deployer (with-deployment name (or war-file root), :port-file port-file, :profiles profiles)
           f #(if (.exists port-file)
                (nrepl/run-tests (assoc opts
                                   :nses (locate-tests root dirs)
                                   :port-file port-file))
-               (println "Oops! Something went wrong. Please check the WildFly server log."))]
+               (error "Oops! Something went wrong. Please check the WildFly server log.\n"))]
       (with-jboss modes #(deployer f)))))

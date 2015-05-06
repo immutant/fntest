@@ -17,9 +17,10 @@
 
 (ns fntest.nrepl
   (:require [clojure.tools.nrepl :as repl]
-            [backtick]
-            [clojure.string :as str]
-            [fntest.jboss :as jboss]))
+            backtick
+            [clojure.string      :as str]
+            [fntest.jboss        :as jboss]
+            [fntest.util         :refer [error warn info]]))
 
 (def ^:dynamic *nrepl-conn*)
 
@@ -62,7 +63,7 @@
   (let [result (parse (remote command))]
     ;; (println "    - Result:" result)
     (if (:out result)
-      (println (:out result)))
+      (info (:out result)))
     (if (:value result)
       (try
         (read-string (:value result))
@@ -73,20 +74,20 @@
 (defn midje-tests
   "Invokes the Midje test suite in the remote Clojure."
   [nses]
-  (println "Running Midje tests...")
+  (info "Running Midje tests...\n")
   (execute (pr-str (backtick/template (midje.util.ecosystem/set-leiningen-paths!
                                        {:test-paths [(immutant.util/app-relative "test")]
                                         :source-paths [(immutant.util/app-relative "src")]}))))
   (let [failures-count (:failures (execute (pr-str (backtick/template (midje.repl/load-facts)))))
         success? (= failures-count 0)]
-    (println "Midje tests done." failures-count "tests failed.")
+    (info (str "Midje tests done. " failures-count " tests failed.\n"))
     success?))
 
 (defn expectations-tests
   "Invokes the expectations test suite in the remote Clojure."
   [nses]
-  (println "Running expectations tests...")
-  (println "Testing namespaces in container: " nses)
+  (info "Running expectations tests...\n")
+  (info (str "Testing namespaces in container: " nses "\n"))
   (execute (pr-str (backtick/template (apply require '~nses))))
   (execute (pr-str (backtick/template (expectations/disable-run-on-shutdown))))
   (let [{:keys [error fail]} (execute (pr-str (backtick/template (expectations/run-tests '~nses))))]
@@ -95,8 +96,8 @@
 (defn clojure-test-tests
   "Invokes the clojure.test test suite in the remote Clojure."
   [nses]
- (println "Running clojure.test tests...")
- (println "Testing namespaces in container:" nses)
+ (info "Running clojure.test tests...\n")
+ (info (str "Testing namespaces in container: " nses "\n"))
  (execute (pr-str (backtick/template (apply require '~nses))))
  (execute (pr-str (backtick/template (clojure.test/successful? (apply clojure.test/run-tests '~nses))))))
 
@@ -121,10 +122,10 @@
   [{:keys [nses] :as opts}]
   (if (seq nses)
     (do
-      (println "Connecting to remote app...")
+      (info "Connecting to remote app...")
       (with-connection opts
         (let [test-runner (select-test-runner)]
           (test-runner nses))))
     (do
-      (println "No tests found.")
+      (error "No tests found.\n")
       true)))

@@ -18,8 +18,6 @@
 (ns fntest.war
   (:require [immutant.deploy-tools.war :as war]
             [clojure.java.io           :as io]
-            [leiningen.core.project    :as prj]
-            [leiningen.core.classpath  :as cp]
             [fntest.util :refer (status)])
   (:import java.io.File))
 
@@ -35,7 +33,9 @@
     project))
 
 (defn set-classpath [project]
-  (assoc project :classpath (cp/get-classpath project)))
+  (require 'leiningen.core.classpath)
+  (assoc project :classpath
+    ((resolve 'leiningen.core.classpath/get-classpath) project)))
 
 (defn set-init [project]
   (if (:main project)
@@ -44,7 +44,9 @@
 
 (defn project->war
   [root & {:keys [port-file profiles]}]
-  (let [project (prj/read
+  (require 'leiningen.core.project)
+  (let [read-fn (resolve 'leiningen.core.project/read)
+        project (read-fn
                   (.getAbsolutePath (io/file root "project.clj"))
                   (or profiles [:dev :test]))]
     (status "Creating war file"

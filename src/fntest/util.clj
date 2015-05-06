@@ -15,17 +15,28 @@
 ;; Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
 ;; 02110-1301 USA, or see the FSF site: http://www.fsf.org.
 
-(ns fntest.util
-  (:require [immutant.deploy-tools.war :as war]
-            [clojure.java.io           :as io]
-            [leiningen.core.project    :as prj]
-            [leiningen.core.classpath  :as cp])
-  (:import java.io.File))
+(ns fntest.util)
+
+(def ^:dynamic *output-fns*
+  {:error #(binding [*out* *err*]
+             (print "Error:" %))
+   :warn #(binding [*out* *err*]
+             (print "Warning:" %))
+   :info print})
+
+(defn error [msg]
+  ((:error *output-fns*) msg))
+
+(defn warn [msg]
+  ((:warn *output-fns*) msg))
+
+(defn info [msg]
+  ((:info *output-fns*) msg))
 
 (defmacro status [msg cmd]
   `(do
-     (print (str ~msg "... "))
+     (info (str ~msg "... "))
      (flush)
      (let [v# ~cmd]
-       (println "done!")
+       (info "done!\n")
        v#)))
