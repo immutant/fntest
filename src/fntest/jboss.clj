@@ -64,6 +64,11 @@
     #"(<cluster-password>)[^<]*"
     "$1fntest"))
 
+(defn disable-welcome-root [config]
+  (str/replace config
+    #"enable-welcome-root=\"true\""
+    "enable-welcome-root=\"false\""))
+
 (defn set-main-server-group-full-ha [config]
   (-> config
     (str/replace
@@ -80,8 +85,10 @@
 
 (defn enable-domain-port-offset [config]
   (when-not (re-find #"port-offset:0" config)
-    (str/replace config #"(<server name=\"server-one\" group=\"main-server-group\">)"
-      "$1\n<socket-bindings port-offset=\"\\${jboss.socket.binding.port-offset:0}\"/>")))
+    (if (re-find #"port-offset=\"0\"" config)  ; EAP
+      (str/replace config #"port-offset=\"0\"" "port-offset=\"\\${jboss.socket.binding.port-offset:0}\"")
+      (str/replace config #"(<server name=\"server-one\" group=\"main-server-group\">)"
+      "$1\n<socket-bindings port-offset=\"\\${jboss.socket.binding.port-offset:0}\"/>"))))
 
 (defn create-server [modes]
   (let [result (api/create-server :domain (domain? modes)
@@ -93,7 +100,7 @@
     (when (isolated? modes)
       (if (domain? modes)
         (do
-          (api/alter-config! result (comp change-cluster-password set-main-server-group-full-ha))
+          (api/alter-config! result (comp change-cluster-password set-main-server-group-full-ha disable-welcome-root))
           (api/alter-config! result (comp enable-domain-port-offset disable-management-security) "host.xml"))
         (api/alter-config! result disable-management-security)))
     result))
