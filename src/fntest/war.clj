@@ -42,6 +42,9 @@
     (assoc project :init-fn (symbol (str (:main project)) "-main"))
     project))
 
+(defn set-resources [project]
+  (assoc project :war-resource-paths (get-in project [:immutant :war :resource-paths])))
+
 (defn project->war
   [root & {:keys [port-file profiles]}]
   (require 'leiningen.core.project)
@@ -56,4 +59,5 @@
           set-classpath
           set-init
           enable-dev
+          set-resources
           (enable-nrepl port-file))))))
