@@ -59,11 +59,6 @@
         (.getCanonicalPath base-dir))
       (.getCanonicalPath (io/file jboss-home base)))))
 
-(defn change-cluster-password [config]
-  (str/replace config
-    #"(<cluster-password>)[^<]*"
-    "$1fntest"))
-
 (defn disable-welcome-root [config]
   (str/replace config
     #"enable-welcome-root=\"true\""
@@ -100,7 +95,7 @@
     (when (isolated? modes)
       (if (domain? modes)
         (do
-          (api/alter-config! result (comp change-cluster-password set-main-server-group-full-ha disable-welcome-root))
+          (api/alter-config! result (comp set-main-server-group-full-ha disable-welcome-root))
           (api/alter-config! result (comp enable-domain-port-offset disable-management-security) "host.xml"))
         (api/alter-config! result disable-management-security)))
     result))
