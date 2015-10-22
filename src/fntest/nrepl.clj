@@ -122,7 +122,7 @@
   [{:keys [nses] :as opts}]
   (if (seq nses)
     (do
-      (info "Connecting to remote app...")
+      (info "Connecting to remote app...\n")
       (with-connection opts
         (let [test-runner (select-test-runner)]
           (test-runner nses))))
