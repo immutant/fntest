@@ -73,7 +73,7 @@
 
 (defn midje-tests
   "Invokes the Midje test suite in the remote Clojure."
-  [nses]
+  [_]
   (info "Running Midje tests...\n")
   (execute (pr-str (backtick/template (midje.util.ecosystem/set-leiningen-paths!
                                        {:test-paths [(immutant.util/app-relative "test")]
@@ -87,7 +87,7 @@
   "Invokes the expectations test suite in the remote Clojure."
   [nses]
   (info "Running expectations tests...\n")
-  (info (str "Testing namespaces in container: " nses "\n"))
+  (info (str "Testing namespaces in container: " (seq nses) "\n"))
   (execute (pr-str (backtick/template (apply require '~nses))))
   (execute (pr-str (backtick/template (expectations/disable-run-on-shutdown))))
   (let [{:keys [error fail]} (execute (pr-str (backtick/template (expectations/run-tests '~nses))))]
@@ -96,10 +96,10 @@
 (defn clojure-test-tests
   "Invokes the clojure.test test suite in the remote Clojure."
   [nses]
- (info "Running clojure.test tests...\n")
- (info (str "Testing namespaces in container: " nses "\n"))
- (execute (pr-str (backtick/template (apply require '~nses))))
- (execute (pr-str (backtick/template (clojure.test/successful? (apply clojure.test/run-tests '~nses))))))
+  (info "Running clojure.test tests...\n")
+  (info (str "Testing namespaces in container: " (seq nses) "\n"))
+  (execute (pr-str (backtick/template (apply require '~nses))))
+  (execute (pr-str (backtick/template (clojure.test/successful? (apply clojure.test/run-tests '~nses))))))
 
 (defn try-require
   [ns]
