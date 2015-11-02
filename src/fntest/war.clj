@@ -37,6 +37,14 @@
   (assoc project :classpath
     ((resolve 'leiningen.core.classpath/get-classpath) project)))
 
+(defn dependency-hierarchy [project]
+  (require 'leiningen.core.classpath)
+  ((resolve 'leiningen.core.classpath/dependency-hierarchy) :dependencies project))
+
+(defn resolve-dependencies [project]
+  (require 'leiningen.core.classpath)
+  ((resolve 'leiningen.core.classpath/resolve-dependencies) :dependencies project))
+
 (defn set-init [project]
   (if (:main project)
     (assoc project :init-fn (symbol (str (:main project)) "-main"))
@@ -56,6 +64,9 @@
       (war/create-war
         (File/createTempFile "fntest" ".war")
         (-> project
+          (assoc
+            :dependency-hierarcher dependency-hierarchy
+            :dependency-resolver resolve-dependencies)
           set-classpath
           set-init
           enable-dev
