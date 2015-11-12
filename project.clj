@@ -3,7 +3,7 @@
   :url "https://github.com/immutant/fntest"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :dependencies [[jboss-as-management "0.4.3"]
+  :dependencies [[jboss-as-management "0.4.4"]
                  [org.clojure/tools.nrepl "0.2.3"]
                  [org.immutant/deploy-tools "2.1.0"]
                  [backtick "0.1.0"]
