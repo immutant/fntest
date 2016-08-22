@@ -43,6 +43,9 @@
 (def debug? (partial check-mode :debug))
 
 (defn isolated-base-dir [modes jboss-home]
+  (when (not (and jboss-home (.exists (io/file jboss-home))))
+    (throw (IllegalArgumentException.
+             (format "'%s' is not a valid jboss home" jboss-home))))
   (let [base (if (domain? modes) "domain" "standalone")]
     (if (isolated? modes)
       (let [base-dir (io/file *isolation-dir* base)
